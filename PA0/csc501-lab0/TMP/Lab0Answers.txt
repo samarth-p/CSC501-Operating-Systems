@@ -1,0 +1,192 @@
+1) Assuming the XINU text begins at address 0x0, draw a rough diagram
+   of XINU’s memory layout with addresses derived from your experimental
+   measurements. Include the information you uncovered from running your 
+   version of printsegaddress() and printprocstks().
+
+
+ _____________  <-- 0x00ffeff8 (main's base)
+|    Stack    |
+|   (main)    |
+|_____________| <-- 0x00ffdffc (main's limit)
+|     Free    |
+|    Memory   |
+|_____________|
+|     Heap    |
+|_____________| <-- 0x00028c38 (ebss)
+|     BSS     |
+|_____________| <-- 0x000205b9 (edata)
+|     Data    |
+|_____________| <-- 0x0001bbf9 (etext)
+|     Text    |
+|_____________| <-- Address - 0x0
+
+_______________________________________________________________________________
+
+2) What is the difference in stack top address before and after calling
+   printtos() ? Draw a diagram to illustrate what are the contents of the
+   items pushed into the stack between these two time points.
+
+
+Below is the output from printtos()
+
+Before[0x00ffefb0]: 0x0001c437
+After [0x00ffefa8]: 0x00ffefec
+
+Difference = 0x00ffefb0 - 0x00ffefa8 = 0x8 Bytes
+
+This means that after calling printtos() from main(), there are 8 bytes
+of data added to the stack.
+
+i) When main() calls the printtos() function, the return address of the
+   main() function will be added to the stack. This accounts for 4 bytes
+   added to the stack.
+ii) Whenever a function is called, it usually pushes the contents of the
+    EBP register onto the stack. So, when printtos is called, it pushes
+	the 4 Byte value saved in EBP onto the stack.
+
+Below is the diagram to illustrate this.
+
+ ___________________
+|     main()'s      |
+|      stack        |
+|___________________| <-- 0x00ffefb0 (TOS before)
+|  Return address   |
+|     of main()     |
+|___________________|
+|    Saved EBP      |
+|     of main()     |
+|___________________| <-- 0x00ffefa8 (TOS After)
+|    printtos()'s   |
+|      stack        |
+|___________________|
+
+Here, printtos()'s stack can grow past 0x00ffefa8 if it allocates space for
+some local variables.
+
+_______________________________________________________________________________
+
+3) Which byte order is adopted in the host machine that we are using ?
+   How did you find out ?
+
+The byte ordering adopted is little endian. This means for any data type
+with more than one byte, the least significant byte is stored in the
+lowest address location.
+
+I found this out by running this simple C program.
+
+long is_little_endian() {
+    unsigned long x = 1;
+    char *p = (char*) &x;
+    return (long)*p;
+}
+
+the variable x is of type long so it stores 4 bytes of data i.e., x = 0x00000001.
+
+Byte number     0x00 0x01 0x02 0x03
+-----------------------------------
+Little endian   0x01 0x00 0x00 0x00
+Big endian      0x00 0x00 0x00 0x01
+
+We use a char pointer p to point to the address of x. Since char holds the address
+of 1 byte, when we print the contents of *p, it will output the contents stored at
+Byte 0x00. So, 1 if little endian else 0 if big endian.
+
+Output from the function -
+Is Little Endian? - 1
+
+_______________________________________________________________________________
+
+4) Briefly describe the mov, push, pusha, pop, and popa instructions in the x86.
+
+mov -
+
+This instruction is used to copy the contents from the first operand onto the
+location specified by the second operand. The operands can be a register, a memory
+location or an immediate value. But, the second operand (destination) cannot be an
+immediate value.
+
+ex - mov %eax, %ebx  // Copies the contents from eax register to ebx register
+     mov $0xff, 1234 // Copies 0xff to the memory location 1234
+
+pusha -
+
+This instruction pushes all the general purpose registers onto the stack in a
+specific order. The order is EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI.
+
+ex - pusha
+// calls the following instructions
+push %eax
+push %ecx
+push %edx
+push %ebx
+push %esp
+push %ebp
+push %esi
+push %edi
+
+pop -
+
+This instruction removes a 4 byte element at the top of the stack and copies
+the value onto to the specified location. It also increments the stack pointer
+to indicate that an element was removed from the stack.
+
+ex - pop %ebx // Removes the element at the TOS and copies it to ebx register
+     pop 1234 // Removes the element at the TOS and copies it to memory location 1234
+
+popa - 
+
+This instruction pops elements from the top of the stack onto general purpose
+register in a specified order (reverse of pusha). The order is EDI, ESI, EBP,
+ESP, EBX, EDX, ECX, EAX.
+
+ex - popa
+// calls the following instructions
+pop %edi
+pop %esi
+pop %ebp
+pop %esp
+pop %ebx
+pop %edx
+pop %ecx
+pop %eax
+_______________________________________________________________________________
+
+5) In a stack frame, local variables are stored below the top of the stack.
+   In task 3, does your result show all the local variables declared in your
+   printtos function? If not, can you explain that? (hint: try to disable the
+   compiler optimization by specifying -O0 in your Makefile)
+
+
+To test whether local variables declared in printtos() function are shown in the
+output, I have declared 2 variables -
+
+long x = 0xabcd, y = 0xffff;
+
+When the function printtos was executed, the output was as shown below
+
+void printtos()
+Before[0x00ffefb0]: 0x0001c47b
+After [0x00ffefa8]: 0x00ffefec
+        element[0x00ffefa4]: 0x00ffefa0
+        element[0x00ffefa0]: 0x00000001
+        element[0x00ffef9c]: 0x00000000
+        element[0x00ffef98]: 0x00000000
+
+Here, we see that the local variables x and y are expected to be pushed on the
+stack but, are not printed in the output. This could be because these variables
+are not used in the function. The compiler would detect this and choose not to
+push these variables onto the stack in order to save memory.
+
+To overcome this, we can disable compiler optimization. Below is the output 
+with compiler optimization disabled.
+
+void printtos()
+Before[0x00ffefb0]: 0x0001c487
+After [0x00ffefa8]: 0x00ffefec
+        element[0x00ffefa4]: 0x00ffefa0
+        element[0x00ffefa0]: 0x00000001
+        element[0x00ffef9c]: 0x0000abcd
+        element[0x00ffef98]: 0x0000ffff
+
+Here, we can see that the 2 variable x and y with values 0xabcd and 0xffff
+respectively are pushed onto the stack and are printed by printtos().
