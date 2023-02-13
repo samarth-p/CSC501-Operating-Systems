@@ -1,0 +1,57 @@
+1) What are the advantages and disadvantages of each of the two scheduling policies?
+   Also, give the advantages and disadvantages of the round robin scheduling policy originally implemented in Xinu.
+   
+Age-Based Process Scheduling:
+
+	Advantages
+	* Gives priority to older processes that have been waiting in the queue for a long time. So prevents starvation.
+	* The initial priority of the processes are considered.
+	* The algorithm is simple to implement.
+
+	Disadvantages
+	* Overhead while recalculating the priority of all the processes while rescheduling.
+	* Overhead from context switching can be high depending the timer interupts.
+
+
+Linux like Scheduling
+
+	Advantages
+	* Fair algorithm as each process in the ready queue is assigned some quantum for every epoch.
+	* The initial priority of processes are considered through their goodness value.
+	* No starvation as any unused CPU ticks for a process is carried over the new epoch.
+
+	Disadvantages
+	* Maintaining the quantum and goodness value leads to complex design.
+	* A process that becomes ready in the middle of an epoch needs to wait until the next epoch.
+	* Overhead while recalculating the quantum and goodness of processes while rescheduling.
+
+
+XINU Round Robin Scheduling:
+
+	Advantages
+	* The algorithm is simple to implement
+	* The priority of the processes are considered while scheduling.
+	
+	Disadvantages
+	* Leads to starvation of low prioity processes
+	* Not a fair scheduler.
+	* Overhead from context switching can be high depending the timer interupts.
+
+
+2) Describe when each of the schedulers run the NULL process.
+
+	* Age-Based Process Scheduling: NULL process is scheduled to run when there is no processes in the ready queue
+
+	* Linux like Scheduling: NULL process is scheduled to run for an epoch when there is no processes in the ready queue for that epoch.
+
+	* XINU Round Robin Scheduling: NULL process is scheduled to run when there is no processes in the ready queue
+
+
+3) Give two suggestions how the above mentioned aging based scheduler could be changed to attain better fairness keeping the 
+fundamental point of incrementing the priority to be the same in your new ideas.
+
+Dynamic Time Slices: Instead of assigning a fixed time slice to each process, the aging based process scheduler could dynamically adjust the time slice based on the current priority of the process. Higher priority processes could be assigned a longer time slice, while lower priority processes could be assigned a shorter time slice. This would ensure that higher priority processes receive more CPU time, while lower priority processes receive less.
+
+Priority Boosting: Another suggestion would be to implement a priority boosting mechanism. This would involve periodically increasing the priority of processes that have been waiting in the ready queue for a long time. This would help to prevent starvation, ensuring that all processes receive a fair share of CPU time. The priority of processes could be boosted by a fixed amount, or the amount could be dynamically adjusted based on the length of time a process has been waiting in the ready queue.
+
+These suggestions aim to improve fairness in the aging based process scheduler, while still maintaining the fundamental idea of incrementing the priority. By dynamically adjusting time slices or implementing a priority boosting mechanism, the scheduler can better ensure that all processes receive a fair share of CPU time, improving overall system efficiency and performance.
