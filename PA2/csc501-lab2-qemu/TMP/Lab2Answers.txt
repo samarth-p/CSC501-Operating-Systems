@@ -1,0 +1,59 @@
+1.1. The priority ceiling protocol (PCP) is used to prevent priority inversion by temporarily raising the priority of a low-priority task to the highest priority of all tasks that might lock a shared resource.
+There are two variants of the protocol: Original Ceiling Priority Protocol (OCPP) and Immediate Ceiling Priority Protocol (ICPP).
+OCPP: Each resource in this protocol is given a priority ceiling value, which represents the highest priority of all processes that may obtain the resource. When a process requests a resource, that resource's priority ceiling value is temporarily increased to that process's priority until that process releases the resource.
+ICPP: The basic PCP is extended in this way such that each process also has a priority ceiling value. In addition to the priority ceiling value of the resource being requested, when a process acquires a resource, its priority is increased to the highest priority ceiling value among all the resources it currently has. By hanging onto a resource that a higher-priority process needs, this prevents priority inversion between processes.
+
+1.2.
+Two writer processes and three CPU-bound processes are used to demonstrate the Priority Inversion problem with the Semaphore implementation: writer1 (Prio = 100), writer2 (Prio = 20), cpu1 (Prio = 40), cpu2 (Prio = 70), and cpu3 (Prio = 80). Writer2 first obtains the lock/sem. Writer1 is then prevented from obtaining the lock/sem. The 3 CPU-bound processes are executed next.
+
+Because the priority inheritance protocol has been put in place, locks don't experience priority inversion issues, as seen in the results below. As a result of Writer2's higher priority, it completes first (and releases the lock). After getting the lock, Writer1 completes. The CPU-bound processes finally complete. Yet, with semaphores, the problem of priority inversion is clear. The highest priority process, Writer1, cannot begin until all lower priority processes have completed.
+
+------------------Locks - Problem of priority inversion------------------
+
+-start writer 2, then sleep 1s. lock granted to writer 2 (priority =  20)
+  writer2: to acquire lock
+  writer2: acquired lock, sleep 2s
+-start writer 1. writer 1 (priority =  100) blocked on the lock
+  writer1: to acquire lock
+-start cpu1 (priority =  40)
+  cpu1: begins execution
+-start cpu2 (priority = 70)
+  cpu2: begins execution
+-start cpu3 (priority = 80)
+  cpu3: begins execution
+  writer2: writer is running again
+  writer2: to release lock
+  writer1: acquired lock
+  writer1: to release lock
+  cpu3: ends execution
+  cpu2: ends execution
+  cpu1: ends execution
+
+
+------------------Semaphore - Problem of priority inversion------------------
+
+-start writer 2, then sleep 1s. semaphore granted to writer 2 (priority =  20)
+  writer2: to acquire sem
+  writer2: acquired sem, sleep 2s
+-start writer 1. writer 1 (priority =  100) blocked on the semaphore
+  writer1: to acquire sem
+-start cpu1 (priority =  40)
+  cpu1: begins execution
+-start cpu2 (priority = 70)
+  cpu2: begins execution
+-start cpu3 (priority = 80)
+  cpu3: begins execution
+  cpu3: ends execution
+  cpu2: ends execution
+  cpu1: ends execution
+  writer2: writer is running again
+  writer2: ends execution
+  writer1: acquired sem
+  writer1: to release sem
+
+This designed testcase can be found in the file task1.c
+
+2. The pseudocode for reader and writer has some glaring issues:
+a) A writer clears the buffer before writing into it. This allows data to be overwritten. As a result, the data is overwritten. Take into account the case where a reader is waiting for the lock and is interested in certain information (pid string, in this case). The waiting reader's data is overwritten when the lock is released by the related writer and given to another writer.
+
+b) Unbounded waiting is possible for a writer if a sizable group of readers are holding the lock. The number of readers that can simultaneously acquire the lock has no maximum limit, nor does the top limit on waiting durations.
